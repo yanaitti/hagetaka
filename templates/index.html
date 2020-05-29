@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>ハゲタカのえじき ONLINE</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+  </head>
+  <body>
+    <div id='app2'>
+      <input id="cName_inp" placeholder="ニックネームを入力してください"><br/>
+      <br/>
+      <button id='createGame'>ゲームを作る(Make a Game)</button><br/>
+      Game ID: <span id='gId'></span><br/>
+      Game Status: <span id='gStatus'></span><br/>
+      <hr/>
+      <button id="joinGame">ゲームに参加する(Join the Game)</button><br/>
+      <input id="gId_inp" placeholder="GameIDを入力してください"><br/>
+      Your ID: <span id='cId'></span><br/>
+      Your Name: <span id='cName'></span><br/>
+      <hr/>
+      <h2>Member Applying</h2>
+      <span id='applyingList'></span>
+      <br/>
+      <div id='sec1' style='display:none'>
+        <hr/>
+        <button id="startGame">ゲームを始める(Let's start the Game)</button><br/><br/>
+        <br/>
+        <button id="open">カードを開く(Open the player's cards)</button><br/>
+        <br/>
+        <button id="next">次のカード(Go on next card)</button><br/>
+      </div>
+      <div id='sec2' style='display:none'>
+        Your Cards:<br/>
+        <span id='holdCards'></span><br/>
+        Your Score:<br/>
+        <span id='score'>0</span><br/>
+        <hr/>
+        Game Cards:<br/>
+        <span id='openedcard'></span><br/>
+        <br/>
+        Applied Cards:<br/>
+        <span id='appliedcards'></span><br/>
+        <hr/>
+        <input id="cardNum_inp" placeholder="番号を入力してください"><br/>
+        <button id="putCard">カードを出す(Put the cards)</button><br/>
+        Your applied Card:<br/>
+        <span id='appliedcard'></span><br/>
+      </div>
+      <br/>
+      <span id='message'></span><br/>
+    </div>
+
+    <script>
+    var timeout = 1000;
+    var timer = '';
+
+    $(function() {
+      var gId = '';
+      var cId = '';
+
+      // Create Game
+      $('#createGame').click(function() {
+        $('#message').empty();
+        $.ajax('create' + '/' + $('#cName_inp').val(),
+          {
+            type: 'get',
+          }
+        )
+        .done(function(data) {
+          $('#gId').text(data);
+          $('#cId').text(data);
+          $('#cName').text($('#cName_inp').val());
+          $('#gStatus').text('waiting');
+          gId = data;
+          cId = data;
+          $('#sec1').show();
+          timer = setTimeout(status_check(gId, cId), timeout)
+        })
+        .fail(function() {
+          $('#message').text('エラーが発生しました');
+        });
+      });
+
+      // Join Game
+      $('#joinGame').click(function() {
+        $('#message').empty();
+        $.ajax($('#gId_inp').val() + '/join/' + $('#cName_inp').val(),
+          {
+            type: 'get',
+          }
+        )
+        .done(function(data) {
+          _tmp = data.split(' ,');
+          $('#cId').text(_tmp[0]);
+          $('#cName').text(_tmp[1]);
+          $('#gStatus').text(_tmp[2]);
+          gId = $('#gId_inp').val();
+          cId = _tmp[0];
+          timer = setTimeout(status_check(gId, cId), timeout)
+        })
+        .fail(function() {
+          $('#message').text('エラーが発生しました');
+        });
+      });
+
+      // Start Game
+      $('#startGame').click(function() {
+        $('#message').empty();
+        $.ajax(gId + '/start',
+          {
+            type: 'get',
+          }
+        )
+        .done(function(data) {
+        })
+        .fail(function() {
+          $('#message').text('エラーが発生しました');
+        });
+      });
+
+      // Open the cards
+      $('#open').click(function() {
+        $('#message').empty();
+        $.ajax(gId + '/open',
+          {
+            type: 'get',
+          }
+        )
+        .done(function(data) {
+        })
+        .fail(function() {
+          $('#message').text('エラーが発生しました');
+        });
+      });
+
+      // Put your card
+      $('#putCard').click(function() {
+        $('#message').empty();
+        // put your card
+        $.ajax(gId + '/' + cId + '/set/' + $('#cardNum_inp').val(),
+          {
+            type: 'get',
+          }
+        )
+        .done(function(data) {
+          $('#message').text(data);
+        })
+        .fail(function() {
+          $('#message').text('エラーが発生しました');
+        });
+        $('#cardNum_inp').val('')
+      });
+
+      // Go on to next
+      $('#next').click(function() {
+        $('#message').empty();
+        $.ajax(gId + '/next',
+          {
+            type: 'get',
+          }
+        )
+        .done(function(data) {
+          // console.log(data)
+          $('#message').text('ok');
+        })
+        .fail(function() {
+          $('#message').text('エラーが発生しました');
+        });
+      });
+    });
+
+    var status_check = function(gId, cId){
+      setTimeout(function(){
+        $('#message').empty();
+        // all status
+        $.getJSON(gId + '/status',
+          {
+            type: 'get',
+          }
+        )
+        .done(function(data) {
+          console.log(data)
+          $('#gStatus').text(data.status);
+          playerPos = 0;
+
+          // Applying List
+          $('#applyingList').empty();
+          for(var pIdx in data.players){
+            // console.log(data.players[pIdx])
+            $('#applyingList').append(data.players[pIdx].nickname + '(' + data.players[pIdx].playerid + ')' + ',');
+            if(cId == data.players[pIdx].playerid){
+              playerPos = pIdx;
+            }
+          }
+
+          if(data.status == 'started'){
+            $('#sec2').show()
+
+            $('#appliedcards').empty();
+            $('#openedcard').text(data.openedcard);
+
+            // hold cards
+            $('#holdCards').text(data.players[playerPos].holdcards.join(','))
+            if(data.players[playerPos].pullcard == -999){
+              $('#appliedcard').text('no choiced yet')
+            }else{
+              $('#appliedcard').text(data.players[playerPos].pullcard)
+            }
+            $('#score').text(data.players[playerPos].score);
+
+          }else if(data.status == 'open'){
+            $('#appliedcards').empty();
+
+            for(var pIdx in data.players){
+              $('#appliedcards').append(data.players[pIdx].nickname + '(' + data.players[pIdx].pullcard + ') diff:' + data.players[pIdx].diff + '<br/>');
+            }
+            $('#score').text(data.players[playerPos].score);
+          }
+        })
+        .fail(function() {
+          $('#message').text('エラーが発生しました');
+        });
+        timer = setTimeout(status_check(gId, cId), timeout)
+      }, timeout);
+    }
+
+    </script>
+  </body>
+</html>
