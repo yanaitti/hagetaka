@@ -79,7 +79,7 @@ def start_game(gameid):
     game = cache.get(gameid)
     game['status'] = 'started'
 
-    game['stocks'] = list(range(-5, 11))
+    game['stocks'] = [-5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     random.shuffle(game['stocks'])
 
     for player in game['players']:
